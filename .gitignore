@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Proteus runtime data — profiles contain cookies and credentials
+.proteus/
+profiles/
+*.sqlite3
+
+# Kernel binaries are large; never commit them
+kernels/
+bin/*.exe
+bin/*.dmg
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

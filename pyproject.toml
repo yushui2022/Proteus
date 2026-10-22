@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "proteus-browser"
+version = "0.1.0"
+description = "Self-hostable anti-detect browser core: deterministic, self-consistent fingerprints"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "AGPL-3.0-only" }
+authors = [{ name = "Proteus contributors" }]
+keywords = ["fingerprint", "browser", "automation", "profile-isolation", "privacy"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Internet :: WWW/HTTP :: Browsers",
+    "Topic :: Security",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/yushui2022/Proteus"
+Documentation = "https://github.com/yushui2022/Proteus/blob/main/docs/ARCHITECTURE.md"
+Roadmap = "https://github.com/yushui2022/Proteus/blob/main/docs/ROADMAP.md"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
