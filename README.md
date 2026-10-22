@@ -85,13 +85,17 @@ Proteus/
 
 ## 快速开始
 
-目前不需要任何第三方依赖，纯标准库：
+核心零第三方依赖，纯标准库。
 
 ```bash
 git clone https://github.com/yushui2022/Proteus.git
 cd Proteus
 
+# 跑测试 —— 什么都不用装
 python -m unittest discover -s tests -v
+
+# 想在自己的代码里 import proteus（本包本身零依赖）
+pip install -e .
 ```
 
 ```python
