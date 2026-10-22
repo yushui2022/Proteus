@@ -48,7 +48,8 @@ OS_PROFILES = {
             "ANGLE (AMD, AMD Radeon RX 6600 Direct3D11 vs_5_0 ps_5_0, D3D11)",
         ),
         "font_profile": "windows-11",
-        "device_pixel_ratios": (1.0, 1.25, 1.5, 2.0),
+        # Windows exposes the display-scaling steps 100/125/150/175/200/250/300%.
+        "device_pixel_ratios": (1.0, 1.25, 1.5, 1.75, 2.0, 2.5),
         "screens": (
             (1920, 1080),
             (2560, 1440),
@@ -58,7 +59,10 @@ OS_PROFILES = {
             (1536, 864),
         ),
         "hardware_concurrency": (4, 6, 8, 12, 16, 20, 24),
-        "device_memory": (4, 8),
+        # Measured on this project: a 32 GB Windows machine reports
+        # navigator.deviceMemory == 32 under Chromium 155. The value is NOT
+        # capped at 8, which is what an earlier version of this table assumed.
+        "device_memory": (8, 16, 32),
     },
     "macos": {
         "platform": "MacIntel",
@@ -70,7 +74,9 @@ OS_PROFILES = {
             "ANGLE (Apple, ANGLE Metal Renderer: Apple M3, Unspecified Version)",
         ),
         "font_profile": "macos-sonoma",
-        "device_pixel_ratios": (2.0,),
+        # macOS reports 1 or 2 and nothing between: a Mac driving a non-Retina
+        # external display genuinely reports 1.
+        "device_pixel_ratios": (1.0, 2.0),
         "screens": (
             (1440, 900),
             (1512, 982),
@@ -79,8 +85,10 @@ OS_PROFILES = {
             (2560, 1440),
             (3456, 2234),
         ),
-        "hardware_concurrency": (8, 10, 12),
-        "device_memory": (8,),
+        # 11 is real: an M3 Pro is 6 performance + 5 efficiency cores, and
+        # Apple Silicon has no SMT, so the count stays odd.
+        "hardware_concurrency": (8, 10, 11, 12),
+        "device_memory": (8, 16, 32),
     },
     "linux": {
         "platform": "Linux x86_64",
@@ -94,7 +102,7 @@ OS_PROFILES = {
         "device_pixel_ratios": (1.0, 1.25, 2.0),
         "screens": ((1920, 1080), (2560, 1440), (1366, 768)),
         "hardware_concurrency": (4, 8, 16),
-        "device_memory": (2, 4, 8),
+        "device_memory": (4, 8, 16),
     },
 }
 

@@ -121,9 +121,26 @@ class TestRulesCatchContradictions(unittest.TestCase):
         broken = mutate(self.fp, webgl_vendor="Google Inc. (Apple)")
         self.assertIn("os.webgl_vendor_mismatch", self.codes(broken))
 
-    def test_mac_dpr1_is_caught(self):
+    def test_mac_mid_step_dpr_is_caught(self):
+        # macOS reports 1 or 2 and nothing between, so 1.25 is a zoom level
+        # leaking into the ratio rather than a display mode.
         fp = derive_for_country(SEED, "US", os_family="macos")
-        self.assertIn("os.dpr_implausible", self.codes(mutate(fp, device_pixel_ratio=1.0)))
+        self.assertIn(
+            "os.dpr_implausible", self.codes(mutate(fp, device_pixel_ratio=1.25))
+        )
+
+    def test_mac_dpr_1_is_accepted(self):
+        # A Mac driving a non-Retina external display genuinely reports 1. The
+        # earlier rule demanded >= 2 and rejected real machines.
+        fp = derive_for_country(SEED, "US", os_family="macos")
+        self.assertNotIn(
+            "os.dpr_implausible", self.codes(mutate(fp, device_pixel_ratio=1.0))
+        )
+
+    def test_windows_fractional_dpr_is_accepted(self):
+        self.assertNotIn(
+            "os.dpr_implausible", self.codes(mutate(self.fp, device_pixel_ratio=1.5))
+        )
 
     def test_ua_major_drift_is_caught(self):
         broken = mutate(self.fp, ua_major=self.fp.ua_major + 7)
@@ -133,7 +150,33 @@ class TestRulesCatchContradictions(unittest.TestCase):
         self.assertIn("hardware.concurrency_range", self.codes(mutate(self.fp, hardware_concurrency=3)))
 
     def test_device_memory_overflow_is_caught(self):
-        self.assertIn("hardware.device_memory_range", self.codes(mutate(self.fp, device_memory=16)))
+        self.assertIn(
+            "hardware.device_memory_range", self.codes(mutate(self.fp, device_memory=64))
+        )
+
+    def test_device_memory_32_is_accepted(self):
+        # Measured: a 32 GB Windows machine reports navigator.deviceMemory == 32
+        # under Chromium 155. The earlier rule capped it at 8.
+        self.assertNotIn(
+            "hardware.device_memory_range",
+            self.codes(mutate(self.fp, device_memory=32)),
+        )
+
+    def test_apple_silicon_odd_core_count_is_accepted(self):
+        # An M3 Pro is 6 performance + 5 efficiency = 11 cores, and Apple
+        # Silicon has no SMT, so the even-count expectation does not apply.
+        fp = derive_for_country(SEED, "US", os_family="macos")
+        broken = mutate(fp, hardware_concurrency=11)
+        self.assertNotIn("hardware.concurrency_range", self.codes(broken))
+        self.assertNotIn("hardware.apple_silicon_cores", self.codes(broken))
+
+    def test_apple_silicon_bad_core_count_is_caught(self):
+        # Cross-pool rule: the renderer string implies the core count.
+        fp = derive_for_country(SEED, "US", os_family="macos")
+        self.assertIn(
+            "hardware.apple_silicon_cores",
+            self.codes(mutate(fp, hardware_concurrency=4)),
+        )
 
     def test_portrait_screen_is_caught(self):
         broken = mutate(self.fp, screen_width=1080, screen_height=1920)

@@ -86,14 +86,29 @@ def _webgl_vendor_mismatch(fp: Fingerprint) -> Optional[str]:
     return None
 
 
+#: Display-scaling steps each OS actually offers. Windows exposes the
+#: 100/125/150/175/200/250/300% menu; macOS reports 1 or 2 and nothing in
+#: between (a Mac driving a non-Retina external display really does report 1);
+#: Linux gives 1, the GNOME fractional 1.25/1.5/1.75 steps, and 2 under HiDPI.
+#: Mid-step values such as 1.818 or 1.09 are a browser zoom level leaking into
+#: the ratio, not a display mode.
+PLAUSIBLE_DPR = {
+    "windows": (1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0),
+    "macos": (1.0, 2.0),
+    "linux": (1.0, 1.25, 1.5, 1.75, 2.0),
+}
+
+
 def _dpr_implausible(fp: Fingerprint) -> Optional[str]:
-    dpr = fp.device_pixel_ratio
+    dpr = float(fp.device_pixel_ratio)
     if dpr <= 0:
         return f"device_pixel_ratio must be positive, got {dpr!r}"
-    if fp.os_family == "macos" and dpr < 2.0:
-        return f"macOS profiles report DPR >= 2.0 on Retina hardware, got {dpr!r}"
-    if fp.os_family in ("windows", "linux") and dpr > 2.0:
-        return f"{fp.os_family} profiles do not plausibly report DPR > 2.0, got {dpr!r}"
+    allowed = PLAUSIBLE_DPR.get(fp.os_family)
+    if allowed and dpr not in allowed:
+        return (
+            f"devicePixelRatio={dpr!r} is not a display mode {fp.os_family} "
+            f"offers (allowed: {allowed})"
+        )
     return None
 
 
@@ -117,20 +132,47 @@ def _ua_major_mismatch(fp: Fingerprint) -> Optional[str]:
 # --------------------------------------------------------------------------
 
 
+#: Apple Silicon core counts. Physical == logical there is no SMT, and 11 is
+#: real: an M3 Pro is 6 performance + 5 efficiency cores. An explicit set rather
+#: than a range, because 9, 13 and 15 are not Apple parts.
+APPLE_SILICON_CORES = frozenset({8, 10, 11, 12, 14, 16})
+
+
 def _concurrency_range(fp: Fingerprint) -> Optional[str]:
     n = fp.hardware_concurrency
     if not isinstance(n, int) or n < 2 or n > 64:
         return f"hardwareConcurrency={n!r} outside the plausible range 2..64"
-    if n % 2 != 0:
-        return f"hardwareConcurrency={n} is odd; real consumer CPUs report even core counts"
+    # Apple Silicon reports physical == logical and ships odd counts (an M3 Pro
+    # is 6P+5E = 11), so the even-count expectation only holds on x86.
+    if fp.os_family != "macos" and n % 2 != 0:
+        return (
+            f"hardwareConcurrency={n} is odd; x86 parts expose SMT and report "
+            f"even counts"
+        )
+    return None
+
+
+def _apple_silicon_cores(fp: Fingerprint) -> Optional[str]:
+    """Cross-pool rule: an Apple M-series GPU implies an Apple Silicon core count."""
+    if fp.os_family != "macos" or "Apple M" not in fp.webgl_renderer:
+        return None
+    n = fp.hardware_concurrency
+    if n not in APPLE_SILICON_CORES:
+        return (
+            f"renderer {fp.webgl_renderer!r} implies Apple Silicon, whose core "
+            f"counts are {sorted(APPLE_SILICON_CORES)}; got {n}"
+        )
     return None
 
 
 def _device_memory_range(fp: Fingerprint) -> Optional[str]:
-    # Chromium clamps navigator.deviceMemory to 8, so 16/32 is an immediate tell.
-    allowed = (1, 2, 4, 8)
+    # navigator.deviceMemory is the approximate device RAM rounded up to a power
+    # of two. Measured: a 32 GB Windows machine reports 32 under Chromium 155,
+    # so 16 and 32 are legitimate values. An earlier version of this rule
+    # claimed Chromium caps at 8 and would have rejected real machines.
+    allowed = (1, 2, 4, 8, 16, 32)
     if fp.device_memory not in allowed:
-        return f"deviceMemory={fp.device_memory!r} not in {allowed} (Chromium caps at 8)"
+        return f"deviceMemory={fp.device_memory!r} not in {allowed}"
     return None
 
 
@@ -202,6 +244,7 @@ RULES: Tuple[Rule, ...] = (
     Rule("ua.major_mismatch", FATAL, _ua_major_mismatch),
     Rule("hardware.concurrency_range", FATAL, _concurrency_range),
     Rule("hardware.device_memory_range", FATAL, _device_memory_range),
+    Rule("hardware.apple_silicon_cores", FATAL, _apple_silicon_cores),
     Rule("screen.geometry", FATAL, _screen_geometry),
     Rule("locale.language_mismatch", FATAL, _language_mismatch),
     Rule("geo.timezone_format", WARN, _timezone_format),

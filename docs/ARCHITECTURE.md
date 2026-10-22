@@ -76,10 +76,11 @@ index = int.from_bytes(sha256(f"{seed}:{field}")[:8], "big") % len(choices)
 | `os.ua_mismatch` | `os_family` 与 UA 字符串中的 OS token 匹配 |
 | `os.font_profile_mismatch` | 字体集与 OS 匹配（给了 Windows UA 却量出 macOS 字体是典型破绽） |
 | `os.webgl_vendor_mismatch` | WebGL vendor 与 OS 匹配 |
-| `os.dpr_implausible` | macOS 的 DPR 不应低于 2 |
+| `os.dpr_implausible` | DPR 必须是该 OS 真实存在的缩放档位（Windows 100–300% 各档；macOS 仅 1 或 2；Linux 1/1.25/1.5/1.75/2） |
 | `ua.major_mismatch` | `ua_major` 与 UA 字符串中的版本号一致 |
-| `hardware.concurrency_range` | `hardwareConcurrency` 在 2–64 且为偶数 |
-| `hardware.device_memory_range` | `deviceMemory` 在 {1,2,4,8}（Chromium 封顶 8） |
+| `hardware.concurrency_range` | `hardwareConcurrency` 在 2–64；x86 须为偶数（Apple Silicon 无 SMT，可有奇数核） |
+| `hardware.device_memory_range` | `deviceMemory` 为 ≤32 的 2 的幂（实测 32 GB 机器报 32，并非封顶 8） |
+| `hardware.apple_silicon_cores` | 跨池规则：Apple M 系 GPU 对应的核数必须是 Apple Silicon 真实档位（含奇数的 11） |
 | `screen.geometry` | 宽高为正、宽 ≥ 高、与 DPR 组合合理 |
 | `locale.language_mismatch` | `languages[0]` 的语言子标签与 `locale` 一致 |
 | `geo.timezone_format` | 时区为 IANA 名或 UTC |
